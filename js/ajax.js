@@ -2,10 +2,17 @@ function saveData()
 {
 	event.preventDefault();
 	var sdiv = document.getElementById("success_msg");
+	sdiv.style.display = "block";
 	var ename = document.getElementById("ename").value;
 	var sal = document.getElementById("salary").value;
 	var desg = document.getElementById("desg").value;
 	var mobile = document.getElementById("mobile").value;
+	var action = document.getElementById("form_action").value;
+	if(action == 'edit')
+	{
+		var empid = document.getElementById("empid").value;
+	}
+	
 	
 	//name validation
 	if(ename.trim() != "")
@@ -68,36 +75,67 @@ function saveData()
 		obj = new ActiveXObject("Microsoft.XMLHTTP");
 	}
 	
-	obj.open("POST","http://localhost/employee/addemployee.php",true);
-	obj.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-	obj.send("ename="+ename+"&designation="+desg+"&mobile="+mobile+"&salary="+sal);
+	if(action == 'add')
+	{
+		obj.open("POST","http://localhost/employee/addemployee.php",true);
+		obj.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+		obj.send("ename="+ename+"&designation="+desg+"&mobile="+mobile+"&salary="+sal);
+	}
+	else
+	{
+		obj.open("POST","http://localhost/employee/editemployee.php",true);
+		obj.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+		obj.send("empid="+empid+"&ename="+ename+"&designation="+desg+"&mobile="+mobile+"&salary="+sal);
+	}
 	
 	obj.onreadystatechange = function(){
 		if(obj.readyState == 4 && obj.status == 200)
 		{
 			if(obj.responseText==1)
 			{
-				sdiv.innerHTML = "Account Created Successfully";
+				if(action == "add")
+				{
+					sdiv.innerHTML = "Account Created Successfully";
+				}
+				else
+				{
+					sdiv.innerHTML = "Employee updated Successfully";
+					
+					document.getElementById("action_title").innerHTML = 'Add Employee';
+					document.getElementById("save").value = 'Save';
+					document.getElementById("form_action").value = 'add';
+					document.getElementById("empid").value = '';
+					
+				}
 				sdiv.setAttribute("class","alert alert-success");
 				document.getElementById("myform").reset();
 				getAllEmployees();
+				setTimeout(hideMsg,3000);
 			}
 			else if(obj.responseText==2)
 			{
-				
+				if(action == "add")
+				{
 					sdiv.innerHTML = "Sorry! Unable to create an account";
-				
+				}
+				else
+				{
+					sdiv.innerHTML = "Sorry! Unable to update the record";
+				}
 				sdiv.setAttribute("class","alert alert-danger");
+				setTimeout(hideMsg,3000);
 			}
 			else if(obj.responseText==3)
 			{
 				sdiv.innerHTML = "Sorry! Unable to receive the data";
 				sdiv.setAttribute("class","alert alert-danger");
+				setTimeout(hideMsg,3000);
 			}
 			else
 			{
 				sdiv.innerHTML = "Something Wrong!!! try again";
 				sdiv.setAttribute("class","alert alert-danger");
+				setTimeout(hideMsg,3000);
 			}
 		}
 	}
@@ -152,7 +190,7 @@ function genarateTable(data)
 				{
 					records += "<td>"+data[j][cols[k]]+"</td>";
 				}
-				records += "<td><a href=''><span class='glyphicon glyphicon-pencil text-primary'></span></a> | <a href=''><span class='text-danger glyphicon glyphicon-trash'></span></a></td>"
+				records += "<td><a href='javascript:void(0)' onclick='editRecord("+data[j].id+")'><span class='glyphicon glyphicon-pencil text-primary'></span></a> | <a href='javascript:void(0)' onclick = 'deleteRecord("+data[j].id+")'><span class='text-danger glyphicon glyphicon-trash'></span></a></td>"
 			records += "</tr>";
 			records += "</tr>";
 		}
@@ -168,10 +206,93 @@ function genarateTable(data)
 	return records;
 }
 
+function editRecord(id)
+{
+	document.getElementById("action_title").innerHTML = 'Edit Employee';
+	document.getElementById("save").value = 'Update Employee';
+	document.getElementById("form_action").value = 'edit';
+	
+	var obj;
+	if(window.XMLHttpRequest)
+	{
+		obj = new XMLHttpRequest();
+	}
+	else
+	{
+		obj = new ActiveXObject("Microsoft.XMLHTTP");
+	}
+	
+	obj.open("GET","http://localhost/employee/getemp.php?key="+id,true)
+	obj.send();
+	
+	obj.onreadystatechange = function()
+	{
+		if(obj.readyState == 4 && obj.status == 200)
+		{
+			var data = JSON.parse(obj.responseText);
+			document.getElementById("ename").value = data.name;
+			document.getElementById("salary").value = data.salary;
+			document.getElementById("desg").value = data.designation;
+			document.getElementById("mobile").value = data.mobile;
+			document.getElementById("empid").value = data.id;
+		}
+	}
+	
+}
 
+//delete record
 
+function deleteRecord(id)
+{
+	var con = confirm("Do you want to Delete?");
+	if(con==true)
+	{
+		var obj;
+		if(window.XMLHttpRequest)
+		{
+			obj = new XMLHttpRequest();
+		}
+		else
+		{
+			obj = new ActiveXObject("Microsoft.XMLHTTP");
+		}
+		
+		obj.open("GET","http://localhost/employee/deleteemployee.php?empid="+id,true)
+		obj.send();
+		
+		obj.onreadystatechange = function(){
+			if(obj.readyState == 4 && obj.status == 200)
+			{
+				var sdiv = document.getElementById("success_msg");
+				sdiv.style.display = "block";
+				if(obj.responseText == 1)
+				{
+					sdiv.innerHTML = "Employee Deleted successfully";
+					sdiv.setAttribute("class","alert alert-success");
+					setTimeout(hideMsg,3000);
+				}
+				else if(obj.responseText == 1)
+				{
+					sdiv.innerHTML = "Unable to delete an employee";
+					sdiv.setAttribute("class","alert alert-danger");
+					setTimeout(hideMsg,3000);
+				}
+				else
+				{
+					sdiv.innerHTML = "Inavlid request sent to server";
+					sdiv.setAttribute("class","alert alert-danger");
+					setTimeout(hideMsg,3000);
+				}
+				getAllEmployees();
+			}
+		}
+	}
+}
 
-
+function hideMsg()
+{
+	document.getElementById("success_msg").style.display = "none";
+}
 
 
 
